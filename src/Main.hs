@@ -20,6 +20,7 @@ import           Control.Monad.Catch
 import           Data.Conduit
 import qualified Data.Conduit.List     as C
 import qualified Data.Text             as T
+import qualified Data.Map              as Map
 import           Network.HTTP.Conduit  (withManager)
 -- ---------------------------------------------------------------------
 
@@ -97,6 +98,7 @@ replyTable = createTable "Reply"
         (HashAndRange "Id" "ReplyDateTime")
         (ProvisionedThroughput 10 5)
 
+replyLocalIndex :: LocalSecondaryIndex
 replyLocalIndex = LocalSecondaryIndex
        "PostedBy"
        (HashAndRange "Id" "PostedBy")
@@ -112,6 +114,20 @@ main = do
   wrap $ createTableAndWait forumTable
   wrap $ createTableAndWait threadTable
   wrap $ createTableAndWait replyTable {createLocalSecondaryIndexes = [replyLocalIndex]}
+
+  wrap $ runCommand (putItem "ProductCatalog"
+          (Map.fromList
+            [
+            ("Id" , toValue (101::Int)),
+            ("Title" , toValue ("Book 101 Title"::T.Text)),
+            ("ISBN" , "111-1111111111"),
+            ("Authors" , toValue ["Author 1"::T.Text ]),
+            ("Price" , toValue (-2::Int)), -- *** Intentional value. Later used to illustrate scan.
+            ("Dimensions" , "8.5 x 11.0 x 0.5"),
+            ("PageCount" , toValue (500::Int)),
+            ("InPublication" , toValue True),
+            ("ProductCategory" , "Book")
+            ])) >>= \r -> putStrLn $ "got:" ++ show r
 
 -- ---------------------------------------------------------------------
 
